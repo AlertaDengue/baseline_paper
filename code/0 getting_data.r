@@ -1,3 +1,4 @@
+# library(plyr)
 library(tidyverse)
 library(httr)
 library(jsonlite)
@@ -21,12 +22,12 @@ source(file = "code/aux_fun.r")
 # saveRDS(object = df, file = "~/Data/df.info.rds")
 # df <- readRDS(file = "~/Data/df.info.rds")
 
-# df.clean <- df |>
-#   select(data_iniSE, municipio_geocodigo, starts_with("casos")) |>
-#   mutate(
-#     data_iniSE = ymd(data_iniSE),
-#     ID_MN_RESI = floor(municipio_geocodigo/10)
-#     ) 
+df.clean <- df |>
+  select(data_iniSE, municipio_geocodigo, starts_with("casos")) |>
+  mutate(
+    data_iniSE = ymd(data_iniSE),
+    ID_MN_RESI = floor(municipio_geocodigo/10)
+    )
 
 
 # SINAN ftp data (Probable) -----------------------------------------------
@@ -46,23 +47,23 @@ source(file = "code/aux_fun.r")
 # denv[[11]] <- vroom::vroom(file = "~/Data/Sinan/Dengue/DENGBR25.csv.zip")
 # 
 # df.sinan <- lapply(
-#   denv, 
+#   denv,
 #   FUN = function(x){
 #     x |> select(ID_MN_RESI, DT_SIN_PRI, SEM_PRI, CLASSI_FIN)
 #   }
-# ) |> bind_rows() 
+# ) |> bind_rows()
 # 
 # 
-# df.sinan <- df.sinan |> 
-#   filter(DT_SIN_PRI >= "2015-10-11", DT_SIN_PRI < "2025-12-31") |> 
-#   drop_na(ID_MN_RESI) |> 
+# df.sinan <- df.sinan |>
+#   filter(DT_SIN_PRI >= "2015-10-11", DT_SIN_PRI < "2025-12-31") |>
+#   drop_na(ID_MN_RESI) |>
 #   mutate(
 #     DT_SIN_PRI.sun = DT_SIN_PRI - as.numeric(format(DT_SIN_PRI, "%w"))
-#   ) 
+#   )
 # 
-# df3 <- df.sinan |> 
-#   filter(CLASSI_FIN != 5 | is.na(CLASSI_FIN)) |> 
-#   group_by(data_iniSE = DT_SIN_PRI.sun, ID_MN_RESI) |> 
+# df3 <- df.sinan |>
+#   filter(CLASSI_FIN != 5 | is.na(CLASSI_FIN)) |>
+#   group_by(data_iniSE = DT_SIN_PRI.sun, ID_MN_RESI) |>
 #   summarise(
 #     casos_prov = n()
 #   )
@@ -71,18 +72,25 @@ source(file = "code/aux_fun.r")
 # df3 <- readRDS(file = "~/Data/df.info.rds")
 
 
+
+
+
+
 # Joining suspected and probable ------------------------------------------
 
 
-# dengue.df <- df2.clean |> 
-#   left_join(df3, by = join_by(data_iniSE, ID_MN_RESI)) |> 
-#   ungroup() 
-#   
-# dengue.df$casos_prov = replace_na(dengue.df$casos_prov, replace = 0)
+dengue.df <- df.clean |>
+  left_join(df3, by = join_by(data_iniSE, ID_MN_RESI)) |>
+  ungroup()
+
+dengue.df$casos_prov = replace_na(dengue.df$casos_prov, replace = 0)
 
 # write_csv(x = dengue.df, file = "data/cases.csv.gz", progress = T)
 
 dengue.df <- vroom::vroom("data/cases.csv.gz")
+
+nmissing <- function(x) sum(is.na(x))
+plyr::colwise(nmissing)(dengue.df)
 
 
 dengue.df |> 
