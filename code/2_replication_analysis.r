@@ -52,6 +52,20 @@ guides_2legends <- guides(fill = guide_legend(order = 1, override.aes = list(lin
                                                              legend.key = element_rect(fill = NA),
                                                              legend.text = element_text(face = 'bold'))))
 
+guides_legends_chart <- guides(fill = guide_legend(order = 1, override.aes = list(linetype = 0), 
+                                                   title.position = "top", 
+                                                   theme = theme(rect = element_rect(fill = NA),
+                                                                 legend.key = element_rect(fill = NA),
+                                                                 legend.text = element_text(face = 'bold'))),
+                               color = guide_legend(order = 0, 
+                                                    override.aes = list(linetype = c('dashed', 'solid')),
+                                                    title = element_blank(), 
+                                                    title.position = "top", 
+                                                    theme = theme(rect = element_rect(fill = NA), 
+                                                                  legend.key = element_rect(fill = NA),
+                                                                  legend.text = element_text(face = 'bold'))))
+
+
 
 # Loading data and results ------------------------------------------------
 
@@ -180,7 +194,10 @@ gt1br <- ggplot(t1br, aes(x = date, fill = quantile)) +
     y = "Number of cases"
   ) + 
   theme_legend_right +
-  guides_2legends
+  theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.5, l = 0.2, unit = 'cm')) +
+  guides_2legends +
+  theme(axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 45, vjust = .5))
 
 gt2br <- ggplot(t2br, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
@@ -196,12 +213,14 @@ gt2br <- ggplot(t2br, aes(x = date, fill = quantile)) +
     y = ""
   ) + 
   theme_legend_right +
-  theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.5, l = 0.2, unit = 'cm')) +
-  guides_2legends
+  guides_2legends +
+  theme(axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 45, vjust = .5))
 
 ggarrange(gt1br, gt2br, common.legend = TRUE, legend = 'right', labels = "AUTO")
 
 
+# Peak week
 t1br |> 
   group_by(quantile) |> 
   filter(maxvalues != 'Inf', maxvalues == max(maxvalues)) |> 
@@ -270,7 +289,7 @@ t2uf <- df4UFplot(df.prob.23_24, ano = 2023)
 gt1uf <- ggplot(t1uf, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
-  geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+  geom_line(aes(y = cases, color = 'black'), linewidth = 0.4, show.legend = T) +
   scale_color_manual(values = 'black', name = '', labels = 'Observed') + 
   facet_geo(~uf, grid = "br_states_grid1", scales = "free_y") +
   scale_x_date(date_breaks = "2 month", date_labels = "%b", expand = c(0,0)) +
@@ -286,13 +305,15 @@ gt1uf <- ggplot(t1uf, aes(x = date, fill = quantile)) +
   theme(strip.text = element_text(face = 'bold'),
         strip.background = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10, angle = 90, vjust = .5))
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 90, vjust = .5),
+        legend.text = element_text(size = 14), 
+        legend.title = element_text(size = 16, face = 'bold'))
 
 gt2uf <- ggplot(t2uf, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
-  geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+  geom_line(aes(y = cases, color = 'black'), linewidth = 0.4, show.legend = T) +
   scale_color_manual(values = 'black', name = '', labels = 'Observed') + 
   facet_geo(~uf, grid = "br_states_grid1", scales = "free_y") +
   scale_y_continuous(labels = scales::comma) +
@@ -308,10 +329,12 @@ gt2uf <- ggplot(t2uf, aes(x = date, fill = quantile)) +
   theme(strip.text = element_text(face = 'bold'),
         strip.background = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10, angle = 90, vjust = .5))
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 90, vjust = .5),
+        legend.text = element_text(size = 14), 
+        legend.title = element_text(size = 16, face = 'bold'))
 
-ggarrange(gt1uf, gt2uf, nrow = 1, common.legend = TRUE, legend = 'right', labels = 'AUTO')
+ggarrange(gt1uf, gt2uf, nrow = 1, common.legend = TRUE, legend = 'none', labels = 'AUTO')
 
 
 # Fig 3 -------------------------------------------------------------------
@@ -409,9 +432,18 @@ ggarrange(gt1map, gt2map, common.legend = TRUE, legend = 'bottom', labels = 'AUT
 t3br <- df4BRplot(df.prob.24_25, ano = 2024)
 t3uf <- df4UFplot(df.prob.24_25, ano = 2024)
 
+t3br <- t3br |> 
+  mutate(cases = if_else(date > ymd('2025-03-30'), true = NA, false = cases))
+t3uf <- t3uf |> 
+  mutate(cases = if_else(uf == 'ES' & is.na(cases), true = 0, false = cases),
+         cases = if_else(date > ymd('2025-03-30'), true = NA, false = cases))
+
+
 gt3br <- ggplot(t3br, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic bands') +
+  geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+  scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
   scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
   scale_y_continuous(labels = scales::comma) +
   theme_bw(base_size = 16) +
@@ -425,13 +457,15 @@ gt3br <- ggplot(t3br, aes(x = date, fill = quantile)) +
   guides_2legends +
   theme(plot.margin = margin(t = 1.5, r = 1.5, l = .5, b = 1.5, unit = 'cm'), 
         legend.margin = margin(t = 1.5, unit = 'cm')) +
-  guides(fill = guide_legend(ncol = 2)) 
+  guides(fill = guide_legend(nrow = 2, override.aes = list(linetype = 0)))
 
 gt3br
 
 gt3uf <- ggplot(t3uf, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic bands') +
+  geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+  scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
   facet_geo(~uf, grid = "br_states_grid1", scales = "free_y") +
   scale_x_date(date_breaks = "2 month", date_labels = "%b", expand = c(0,0)) +
   scale_y_continuous(labels = scales::comma) +
@@ -447,13 +481,11 @@ gt3uf <- ggplot(t3uf, aes(x = date, fill = quantile)) +
         strip.background = element_blank(),
         panel.grid.minor = element_blank(),
         legend.position = 'none',
-        axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10, angle = 90, vjust = .5))
-
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 90, vjust = .5))
 
 ggarrange(gt3br, gt3uf, common.legend = FALSE, 
           labels = "AUTO", widths = c(8,10))
-
 
 
 # SM Fig2 -----------------------------------------------------------------
@@ -461,7 +493,7 @@ ggarrange(gt3br, gt3uf, common.legend = FALSE,
 dadosBR <- dados.macro |> 
   group_by(date) |> 
   summarise(cases = sum(cases, na.rm = TRUE)) |> 
-  filter(year(date)<2025) 
+  filter(date <= ymd('2025-03-30'))
 
 
 temporalBR <- dadosBR |> 
@@ -480,7 +512,7 @@ dadosRegiao <- dados.macro |>
   mutate(region = str_sub(as.numeric(macroregional_geocode), 1, 1)) |> 
   group_by(date, region) |> 
   summarise(cases = sum(cases, na.rm = TRUE)) |> 
-  filter(year(date)<2025) 
+  filter(date <= ymd('2025-03-30'))
 
 dadosRegiao$region <- factor(dadosRegiao$region, levels = c("1", "2", "3", "4", "5"),
                              labels = c("North", "Northeast", "Southeast", "South", "Mid-West"))
@@ -494,9 +526,370 @@ temporalR <- dadosRegiao |>
   labs(y = 'Number of cases', x = '') +
   theme_pubclean() +
   theme(legend.position = 'none',
-        text = element_text(size = 14,family = 'Arial'), plot.margin = margin(t = 4, r = 16, l = 4, b = 4)) +
+        text = element_text(size = 14,family = 'Arial'), 
+        plot.margin = margin(t = 4, r = 16, l = 4, b = 4),
+        strip.text = element_text(size = 14)) +
   facet_wrap(.~region, scale = "free_y", ncol = 3)
 
 
 ggarrange(ggarrange(NULL, temporalBR, NULL, widths = c(3,10,3), nrow = 1), 
           temporalR, nrow = 2)
+
+
+# SM Fig3-30 --------------------------------------------------------------
+
+
+nomesuf <- dados.macro |> 
+  ungroup() |> 
+  select(uf) |> 
+  unique() |> 
+  mutate(nome = c("Acre", "Alagoas", "Amazonas", "Amapá", "Bahia", "Ceará",
+                  "Distrito Federal", "Espírito Santo", "Goiás", "Maranhão",
+                  "Minas Gerais", "Mato Grosso do Sul", "Mato Grosso",
+                  "Pará", "Paraíba", "Pernambuco", "Piauí", "Paraná",
+                  "Rio de Janeiro", "Rio Grande do Norte", "Rondônia",
+                  "Roraima", "Rio Grande do Sul", "Santa Catarina",
+                  "Sergipe", "São Paulo", "Tocantins"),
+         label = str_c(nome, " (", uf, ")"))
+
+
+gera_plots_uf <- function(UF) {
+  
+  tuf <- bind_rows(t1uf, t2uf, t3uf |> mutate(year.s.first = 2024)) |> 
+    filter(uf == UF)
+  
+  max_valor <- max(tuf$maxvalues[is.finite(tuf$maxvalues)], tuf$cases, na.rm = TRUE)
+  max_round <- ceiling(max_valor / 50) * 50
+  
+  g1 <- ggplot(tuf |> filter(year.s.first == '2022'), aes(x = date, fill = quantile)) +
+    geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
+    scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
+    geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+    scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+    scale_y_continuous(labels = scales::comma, limits = c(0,max_round)) +
+    theme_bw(base_size = 18) +
+    labs(
+      title = '2022-2023',
+      x = "",
+      y = "Number of cases"
+    ) + 
+    theme_legend_right +
+    guides_2legends +
+    theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.6, l = 0.2, unit = 'cm'),
+          axis.text.x = element_text(angle = 45, vjust = .5)) 
+  
+  g2 <- ggplot(tuf |> filter(year.s.first == '2023'), aes(x = date, fill = quantile)) +
+    geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
+    scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
+    geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+    scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+    scale_y_continuous(labels = scales::comma, limits = c(0,max_round)) +
+    theme_bw(base_size = 18) +
+    labs(
+      title = '2023-2024',
+      x = "",
+      y = ""
+    ) + 
+    theme_legend_right +
+    theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.5, l = 0.2, unit = 'cm'),
+          axis.text.x = element_text(angle = 45, vjust = .5)) +
+    guides_2legends
+  
+  g3 <- ggplot(tuf |> filter(year.s.first == '2024'), aes(x = date, fill = quantile)) +
+    geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
+    scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic bands') +
+    geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+    scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+    scale_y_continuous(labels = scales::comma, limits = c(0,max_round)) +
+    theme_bw(base_size = 18) +
+    labs(
+      title = '2024-2025',
+      x = "",
+      y = ""
+    ) + 
+    theme_legend_right +
+    guides_2legends +
+    theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.5, l = 0.2, unit = 'cm'),
+          axis.text.x = element_text(angle = 45, vjust = .5))
+  
+  
+  fig <- ggarrange(g1, g2, g3, nrow = 1,
+                   common.legend = TRUE, legend = 'bottom', labels = "AUTO")
+  
+  tmp <- nomesuf |> filter(uf == UF)
+  
+  annotate_figure(fig, top = text_grob(tmp$label, 
+                                       face = "bold", size = 18))
+
+}
+
+
+vufs <- nomesuf$uf  
+
+walk2(vufs, 3:29, function(uf, num) {
+  p <- gera_plots_uf(uf)  
+  
+  ggsave(
+    filename = sprintf("SM_Fig%02d.png", num),
+    path = '~/ownCloud/Baseline_forecasts/Papers/Epidemic threshold/IDM/v2/SM/',
+    plot = p,
+    width = 12, height = 4.5, scale = 1.2,
+    dpi = 300, 
+    bg = 'white'
+  )
+})
+
+
+
+# Control chart -----------------------------------------------------------
+
+# Brazil: 
+
+df4diagram <- function(obj, ano, target) {
+  
+  tmp1 <- obj |> 
+    mutate(year.s.first = as.numeric(str_sub(year, 1, 4))) |> 
+    filter(year.s.first >= ano - 5 & year.s.first <= ano - 1) |> 
+    group_by(week, year, year.s.first, date) |> 
+    summarise(cases = sum(cases, na.rm = TRUE)) |> 
+    ungroup() |> 
+    group_by(week) |> 
+    mutate(mediana = median(cases), 
+           Q1 = quantile(cases, .25), 
+           Q3 = quantile(cases, .75),
+           season = target) |> 
+    select(season, week, mediana, Q1, Q3) |> 
+    unique() 
+  
+  tmp2 <- observed |> 
+    filter(year.s.first == ano) |> 
+    group_by(week, season, date, year.s.first) |> 
+    summarise(cases = sum(cases, na.rm = TRUE))
+  
+  tmp1 |> left_join(tmp2)
+  
+}
+
+
+# 2022-2023
+
+dc1br <- df4diagram(obj = dados.macro, ano = 2022, target = '2022-2023')
+
+gdc1br <- ggplot(dc1br, aes(x = date)) +
+  geom_ribbon(aes(ymin = Q1, ymax = Q3, fill = 'grey60'), alpha = 0.7) + 
+  scale_fill_manual(values = 'grey60', name = '', labels = 'Endemic channel') +
+  geom_line(aes(y = cases, color = 'Observed cases'), linetype = 'solid', linewidth = 0.7, show.legend = T) +
+  geom_line(aes(y = mediana, color = 'Median'),  linetype = 'dashed', linewidth = .7, show.legend = T) +
+  scale_color_manual(values = c('Observed cases' = 'black', 'Median' = 'blue'), name = '') + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_bw(base_size = 16) +
+  labs(
+    x = "",
+    y = "Number of cases"
+  ) + 
+  theme_legend_right +
+  guides_legends_chart 
+
+# 2023-2024
+
+dc2br <- df4diagram(obj = dados.macro, ano = 2023, target = '2023-2024')
+
+gdc2br <- ggplot(dc2br, aes(x = date)) +
+  geom_ribbon(aes(ymin = Q1, ymax = Q3, fill = 'grey60'), alpha = 0.7) + 
+  scale_fill_manual(values = 'grey60', name = '', labels = 'Endemic channel') +
+  geom_line(aes(y = cases, color = 'Observed cases'), linetype = 'solid', linewidth = 0.7, show.legend = T) +
+  geom_line(aes(y = mediana, color = 'Median'),  linetype = 'dashed', linewidth = .7, show.legend = T) +
+  scale_color_manual(values = c('Observed cases' = 'black', 'Median' = 'blue'), name = '') + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_bw(base_size = 16) +
+  labs(
+    x = "",
+    y = "Number of cases"
+  ) + 
+  theme_legend_right +
+  guides_legends_chart 
+
+# 2024-2025
+
+dc3br <- df4diagram(obj = dados.macro, ano = 2024, target = '2024-2025') |> 
+  select(-date) |> 
+  left_join(t3br |> select(week, date) |> unique(), by = 'week') |> 
+  mutate(cases = if_else(date > ymd('2025-03-30'), true = NA, false = cases))
+
+gdc3br <- ggplot(dc3br, aes(x = date)) +
+  geom_ribbon(aes(ymin = Q1, ymax = Q3, fill = 'grey60'), alpha = 0.7) + 
+  scale_fill_manual(values = 'grey60', name = '', labels = 'Endemic channel') +
+  geom_line(aes(y = cases, color = 'Observed cases'), linetype = 'solid', linewidth = 0.7, show.legend = T) +
+  geom_line(aes(y = mediana, color = 'Median'),  linetype = 'dashed', linewidth = .7, show.legend = T) +
+  scale_color_manual(values = c('Observed cases' = 'black', 'Median' = 'blue'), name = '') + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_bw(base_size = 16) +
+  labs(
+    x = "",
+    y = "Number of cases"
+  ) + 
+  theme_legend_right +
+  guides_legends_chart 
+
+
+
+## Comparing with bands ---------------------------------------------------
+
+# 2022-2023
+
+alertas1br <- t1br |> 
+  filter(quantile == 'Moderately high,\nfairly typical') |> 
+  mutate(alerta = if_else(cases>maxvalues, true = 1, false = 0)) |> 
+  select(date, alerta) |> 
+  mutate(method = 'Probabilistic epidemic\nbands') |> 
+  bind_rows(dc1br |> 
+              mutate(alerta = if_else(cases>Q3, true = 1, false = 0)) |>
+              ungroup() |> 
+              select(date, alerta) |> 
+              mutate(method = 'Control chart')) 
+
+galerta1br <- ggplot(alertas1br, aes(x = date, y = alerta, group = method)) +
+  geom_point(aes(color = method)) +
+  geom_line(aes(color = method)) +
+  scale_y_continuous(breaks = c(0,1), name = 'Warning', labels = c('No', 'Yes')) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0), name ='') +
+  scale_color_manual(values = c('#2F5CD7', '#ef8a47'),  name = '') +
+  theme_bw(base_size = 16) +
+  theme_legend_right +
+  theme(legend.title = element_blank())
+
+
+g22 <- ggarrange(gt1br + theme(axis.text.x = element_text(angle = 0),
+                        axis.title.y = element_text(size = 16)),
+          gdc1br,
+          galerta1br,
+          nrow = 3, 
+          heights = c(7,7,3),
+          legend = 'none',
+          align = 'hv')
+
+
+# 2023-2024
+
+alertas2br <- t2br |> 
+  filter(quantile == 'Moderately high,\nfairly typical') |> 
+  mutate(alerta = if_else(cases>maxvalues, true = 1, false = 0)) |> 
+  select(date, alerta) |> 
+  mutate(method = 'Probabilistic bands') |> 
+  bind_rows(dc2br |> 
+              mutate(alerta = if_else(cases>Q3, true = 1, false = 0)) |>
+              ungroup() |> 
+              select(date, alerta) |> 
+              mutate(method = 'Control chart')) 
+
+galerta2br <- ggplot(alertas2br, aes(x = date, y = alerta, group = method)) +
+  geom_point(aes(color = method)) +
+  geom_line(aes(color = method)) +
+  scale_y_continuous(breaks = c(0,1), name = '', labels = c('No', 'Yes')) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0), name ='') +
+  scale_color_manual(values = c('#2F5CD7', '#ef8a47'),  name = '') +
+  theme_bw(base_size = 16) +
+  theme_legend_right +
+  theme(legend.title = element_blank())
+
+g23 <- ggarrange(gt2br + 
+                   theme(axis.text.x = element_text(angle = 0),
+                         axis.title.y = element_text(size = 16)),
+                 gdc2br + labs(y = ''),
+                 galerta2br,
+                 nrow = 3, 
+                 heights = c(7,7,3),
+                 align = 'hv', legend = 'none')
+
+
+# 2024-2025
+
+alertas3br <- t3br |> 
+  filter(quantile == 'Moderately high,\nfairly typical') |> 
+  mutate(alerta = if_else(cases>maxvalues, true = 1, false = 0)) |> 
+  select(date, alerta) |> 
+  mutate(method = 'Probabilistic\nepidemic bands') |> 
+  bind_rows(dc3br |> 
+              mutate(alerta = if_else(cases>Q3, true = 1, false = 0)) |>
+              ungroup() |> 
+              select(date, alerta) |> 
+              mutate(method = 'Control chart')) 
+
+galerta3br <- ggplot(alertas3br, aes(x = date, y = alerta, group = method)) +
+  geom_point(aes(color = method)) +
+  geom_line(aes(color = method)) +
+  scale_y_continuous(breaks = c(0,1), name = '', labels = c('No', 'Yes')) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0), name ='') +
+  scale_color_manual(values = c('#2F5CD7', '#ef8a47'),  name = '') +
+  theme_bw(base_size = 16) +
+  theme_legend_right +
+  theme(legend.title = element_blank())
+
+g24 <- ggarrange(gt3br +
+            labs(title = '2024-2025', y = '') +
+            theme_legend_right +
+            theme(axis.text.x = element_text(angle = 0),
+                  axis.title.y = element_text(size = 16)) +
+            guides_2legends ,
+          gdc3br + labs(y = ''),
+          galerta3br,
+          nrow = 3, 
+          heights = c(7,7,3),
+          align = 'hv')
+
+
+ggarrange(g22, g23, g24, 
+          ncol = 3,
+          widths = c(5,5,7.25),
+          align = 'hv')
+
+
+
+t2br |> 
+  filter(quantile == 'Moderately high,\nfairly typical') |> 
+  mutate(alerta = if_else(cases>maxvalues, true = 1, false = 0)) |> 
+  filter(alerta == 1) |> 
+  arrange(date)
+
+dc2br |> 
+  mutate(alerta = if_else(cases>Q3, true = 1, false = 0)) |> 
+  filter(alerta == 1) |> 
+  arrange(date)
+
+
+
+
+## Comparando picos -------------------------------------------------------
+
+t1br |> 
+  group_by(quantile) |> 
+  filter(maxvalues != 'Inf', maxvalues == max(maxvalues)) |> 
+  select(week, quantile, maxvalues)
+dc1br |> 
+  arrange(desc(mediana))
+dc1br |> 
+  arrange(desc(cases))
+
+t2br |> 
+  group_by(quantile) |> 
+  filter(maxvalues != 'Inf', maxvalues == max(maxvalues)) |> 
+  select(week, quantile, maxvalues)
+dc2br |> 
+  arrange(desc(mediana))
+dc2br |> 
+  arrange(desc(cases))
+
+t3br |> 
+  group_by(quantile) |> 
+  filter(maxvalues != 'Inf', maxvalues == max(maxvalues)) |> 
+  select(week, quantile, maxvalues)
+dc3br |> 
+  arrange(desc(mediana))
+
+
