@@ -538,7 +538,6 @@ ggarrange(ggarrange(NULL, temporalBR, NULL, widths = c(3,10,3), nrow = 1),
 
 # SM Fig3-30 --------------------------------------------------------------
 
-
 nomesuf <- dados.macro |> 
   ungroup() |> 
   select(uf) |> 
@@ -552,16 +551,21 @@ nomesuf <- dados.macro |>
                   "Sergipe", "São Paulo", "Tocantins"),
          label = str_c(nome, " (", uf, ")"))
 
+tuf <- bind_rows(t1uf, t2uf, t3uf |> 
+                   mutate(year.s.first = 2024,
+                          season = '2024-2025')) |> 
+  left_join(nomesuf)
+
 
 gera_plots_uf <- function(UF) {
   
-  tuf <- bind_rows(t1uf, t2uf, t3uf |> mutate(year.s.first = 2024)) |> 
+  tmp <- bind_rows(t1uf, t2uf, t3uf |> mutate(year.s.first = 2024)) |> 
     filter(uf == UF)
   
-  max_valor <- max(tuf$maxvalues[is.finite(tuf$maxvalues)], tuf$cases, na.rm = TRUE)
+  max_valor <- max(tmp$maxvalues[is.finite(tmp$maxvalues)], tmp$cases, na.rm = TRUE)
   max_round <- ceiling(max_valor / 50) * 50
   
-  g1 <- ggplot(tuf |> filter(year.s.first == '2022'), aes(x = date, fill = quantile)) +
+  g1 <- ggplot(tmp |> filter(year.s.first == '2022'), aes(x = date, fill = quantile)) +
     geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
     scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
     geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
@@ -579,7 +583,7 @@ gera_plots_uf <- function(UF) {
     theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.6, l = 0.2, unit = 'cm'),
           axis.text.x = element_text(angle = 45, vjust = .5)) 
   
-  g2 <- ggplot(tuf |> filter(year.s.first == '2023'), aes(x = date, fill = quantile)) +
+  g2 <- ggplot(tmp |> filter(year.s.first == '2023'), aes(x = date, fill = quantile)) +
     geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
     scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
     geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
@@ -597,7 +601,7 @@ gera_plots_uf <- function(UF) {
           axis.text.x = element_text(angle = 45, vjust = .5)) +
     guides_2legends
   
-  g3 <- ggplot(tuf |> filter(year.s.first == '2024'), aes(x = date, fill = quantile)) +
+  g3 <- ggplot(tmp |> filter(year.s.first == '2024'), aes(x = date, fill = quantile)) +
     geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
     scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic bands') +
     geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
@@ -619,9 +623,7 @@ gera_plots_uf <- function(UF) {
   fig <- ggarrange(g1, g2, g3, nrow = 1,
                    common.legend = TRUE, legend = 'bottom', labels = "AUTO")
   
-  tmp <- nomesuf |> filter(uf == UF)
-  
-  annotate_figure(fig, top = text_grob(tmp$label, 
+  annotate_figure(fig, top = text_grob(unique(tmp$label), 
                                        face = "bold", size = 18))
 
 }
@@ -741,6 +743,12 @@ gdc3br <- ggplot(dc3br, aes(x = date)) +
 
 ## Comparing with bands ---------------------------------------------------
 
+# To compare, we will consider a warning signal when the number of observed cases is:
+## - higher than the upper limit of the endemic channel (75% percentile of the distribution of cases 
+## in the previous 5 years) for the control chart
+## - higher than the "Moderately high, fairly typical" band (75% percentile of the samples
+## distribution) for the probabilistic epidemic bands
+
 # 2022-2023
 
 alertas1br <- t1br |> 
@@ -850,6 +858,7 @@ ggarrange(g22, g23, g24,
           align = 'hv')
 
 
+# Date of first "warning":
 
 t2br |> 
   filter(quantile == 'Moderately high,\nfairly typical') |> 
@@ -863,9 +872,7 @@ dc2br |>
   arrange(date)
 
 
-
-
-## Comparando picos -------------------------------------------------------
+## Comparing peaks -------------------------------------------------------
 
 t1br |> 
   group_by(quantile) |> 
@@ -893,3 +900,135 @@ dc3br |>
   arrange(desc(mediana))
 
 
+
+# Plots for dashboard -----------------------------------------------------
+
+# Health districts (HD) = macroregional
+
+df4HDplot <- function(obj, ano) {
+  
+  observed.tmp <- observed |> 
+    filter(year.s.first == ano) |> 
+    group_by(week, season, year.s.first, uf, macroregional, macroregional_geocode) |> 
+    summarise(cases = sum(cases, na.rm = TRUE)) 
+  
+  temp <- obj |> 
+    group_by(week, samples, uf, macrocode) |> 
+    summarise(values = sum(values)) |> 
+    ungroup() |> 
+    group_by(week, uf, macrocode) |> 
+    summarise(q50 = quantile(values, probs = 0.5), 
+              q75 = quantile(values, probs = 0.75), 
+              q90 = quantile(values, probs = 0.9),
+              q100 = Inf) 
+  
+  tmp1 <- temp |> 
+    pivot_longer(
+      cols = c(q50, q75, q90, q100),
+      names_to = 'quantile',
+      values_to = 'maxvalues'
+    )
+  
+  tmp2 <- temp |> 
+    mutate(q100 = q90,
+           q90 = q75,
+           q75 = q50,
+           q50 = 0) |> 
+    pivot_longer(
+      cols = c(q50, q75, q90, q100),
+      names_to = 'quantile',
+      values_to = 'minvalues'
+    )
+  
+  tmp <- tmp1 |> 
+    left_join(tmp2, by = c('week', 'uf', 'quantile', 'macrocode')) |> 
+    ungroup() |> 
+    left_join(observed.tmp, by = c('week', 'uf', 'macrocode' = 'macroregional_geocode')) |> 
+    mutate(epiweek = ifelse(week <= 12, yes = week + 40, no = week -12), 
+           epiyear = ifelse(week <= 12, yes = ano, no = ano + 1),
+           date = aweek::get_date(week = epiweek, year = epiyear,start = 7))
+  
+  tmp$quantile <- factor(tmp$quantile, 
+                         levels = c('q50','q75','q90','q100'),
+                         labels = c('Below the median,\ntypical','Moderately high,\nfairly typical',
+                                    'Fairly high,\natypical', 'Exceptionally high,\nvery atypical'))
+  return(tmp)
+}
+
+t1hd <- df4HDplot(df.prob.22_23, ano = 2022)
+t2hd <- df4HDplot(df.prob.23_24, ano = 2023)
+t3hd <- df4HDplot(df.prob.24_25, ano = 2024)
+
+thd <- bind_rows(t1hd, t2hd, 
+                 t3hd |> 
+                   mutate(year.s.first = 2024,
+                          season = '2024-2025') |>
+                   select(-macroregional) |> 
+                   left_join(dados.macro |> 
+                               ungroup() |> 
+                               select(macroregional, macroregional_geocode) |> 
+                               unique(), 
+                             by = c('macrocode' = 'macroregional_geocode'))) |> 
+  left_join(nomesuf) |> 
+  rename(UF_label = label) |> 
+  mutate(label = str_c(macroregional, " (", uf, ")"))
+
+tbr <- bind_rows(t1br, t2br, 
+                 t3br |> 
+                   mutate(year.s.first = 2024,
+                          season = '2024-2025')) |> 
+  mutate(label = 'Brazil')
+
+gera_plots <- function(obj, local, ano) {
+  
+  if(is.numeric(local)){
+  tmp <- obj |> 
+    filter(macrocode == local,
+           year.s.first == ano)
+  }
+  if(is.character(local)){
+    if(local != 'BR'){
+    tmp <- obj |> 
+      filter(uf == local,
+             year.s.first == ano)
+    }
+    else{
+      tmp <- obj |> 
+        filter(year.s.first == ano)
+    }
+  }
+ 
+  if(nrow(tmp)==0){stop('Empty dataset, fix local.')}
+  
+  max_valor <- max(tmp$maxvalues[is.finite(tmp$maxvalues)], tmp$cases, na.rm = TRUE)
+  max_round <- ceiling(max_valor / 50) * 50
+  
+  gtmp <- ggplot(tmp, aes(x = date, fill = quantile)) +
+    geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
+    scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
+    geom_line(aes(y = cases, color = 'black'), linewidth = 0.5, show.legend = T) +
+    scale_color_manual(values = 'black', name = '', labels = 'Observed cases') + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
+    scale_y_continuous(labels = scales::comma, limits = c(0,max_round)) +
+    theme_bw(base_size = 18) +
+    theme_legend_right +
+    guides_2legends +
+    theme(plot.margin = margin(t = 0.2, b = 0.2, r = 0.6, l = 0.2, unit = 'cm'),
+          axis.text.x = element_text(angle = 45, vjust = .5),
+          plot.title = element_text(size = 18),
+          plot.subtitle = element_text(size = 16, hjust = .5)) 
+  
+  g1 <- gtmp +
+    labs(
+      title = unique(tmp$label),
+      subtitle = unique(tmp$season),
+      x = "",
+      y = "Number of cases"
+    ) 
+  return(g1)
+  
+}
+
+gera_plots(thd, local = 1701, 2024)
+gera_plots(tuf, local = 'TO', 2024)
+gera_plots(tbr, local = 'BR', 2024)
