@@ -9,13 +9,22 @@ library(aweek)
 library(vroom)
 library(MetBrewer)
 
-source("aux_fun.r")
 
-# Palette
+# Auxiliary functions -------------------------------------------------------------------------
+
+source("aux_fun.r")
+source("data_fun.r")
+source("graf_fun.r")
+
+
+# Palette -------------------------------------------------------------------------------------
+
 pal <- met.brewer('Hiroshige', 5)[1:3]
 pal2 <- c(met.brewer('Hiroshige', 7)[1], pal)
 
-# Função plot BR
+
+# Reading and manipulating data ---------------------------------------------------------------
+
 dengue.df <- vroom::vroom("../data/cases.csv.gz")
 spatial.tbl <- vroom::vroom("../data/spatial.tbl.csv")
 
@@ -36,117 +45,52 @@ df.prob.22_23 <- read_csv(file = "../samples/macro.prob.22_23.csv.gz")
 df.prob.23_24 <- read_csv(file = "../samples/macro.prob.23_24.csv.gz")
 df.prob.24_25 <- read_csv(file = "../samples/macro.prob.24_25.csv.gz")
 
-df4BRplot <- function(obj, ano) {
-  
-  observed.tmp <- observed |> 
-    filter(year.s.first == ano) |> 
-    group_by(week, season, year.s.first, date) |> 
-    summarise(cases = sum(cases, na.rm = TRUE)) 
-  
-  temp <- obj |> 
-    group_by(week, samples) |> 
-    summarise(values = sum(values)) |> 
-    ungroup() |> 
-    group_by(week) |> 
-    summarise(q50 = quantile(values, probs = 0.5), 
-              q75 = quantile(values, probs = 0.75),
-              q90 = quantile(values, probs = 0.9),
-              q100 = Inf) 
-  
-  tmp1 <- temp |> 
-    pivot_longer(
-      cols = c(q50, q75, q90, q100),
-      names_to = 'quantile',
-      values_to = 'maxvalues'
-    )
-  
-  tmp2 <- temp |> 
-    mutate(q100 = q90,
-           q90 = q75,
-           q75 = q50,
-           q50 = 0) |> 
-    pivot_longer(
-      cols = c(q50, q75, q90, q100),
-      names_to = 'quantile',
-      values_to = 'minvalues'
-    )
-  
-  tmp <- tmp1 |> 
-    left_join(tmp2, by = c('week', 'quantile')) |> 
-    ungroup() |> 
-    left_join(observed.tmp, by = 'week') |> 
-    mutate(epiweek = ifelse(week <= 12, yes = week + 40, no = week -12), 
-           epiyear = ifelse(week <= 12, yes = ano, no = ano + 1),
-           date = aweek::get_date(week = epiweek, year = epiyear,start = 7))
-  
-  tmp$quantile <- factor(tmp$quantile, 
-                         levels = c('q50','q75','q90','q100'),
-                         labels = c('Below the median,\ntypical','Moderately high,\nfairly typical',
-                                    'Fairly high,\natypical', 'Exceptionally high,\nvery atypical'))
-  return(tmp)
-}
 
-# Seu objeto t1br2 para Brasil
+# Datasets for Brazil, UFs and Health Regions -------------------------------------------------
+
 t1br <- df4BRplot(df.prob.22_23, ano = 2022)
-max_valor <- max(t1br$maxvalues[is.finite(t1br$maxvalues)], t1br$cases, na.rm = TRUE)
-t1br_max_round <- ceiling(max_valor / 50) * 50
-t1br_max_round2 <- t1br_max_round + (t1br_max_round * 0.1)
-t1br2 <- t1br |> mutate(maxvalues = ifelse(is.infinite(maxvalues), t1br_max_round2, maxvalues))
+t2br <- df4BRplot(df.prob.23_24, ano = 2023)
 
-# Função de plotagem
-plot_grafico_artigo <- function(df, palette) {
-  quants  <- rev(unique(df$quantile))
-  colors  <- palette[seq_along(quants)]
-  fig <- plot_ly()
-  for(i in seq_along(quants)) {
-    fig <- fig %>% add_trace(
-      data      = df |> filter(quantile == quants[i]),
-      type      = 'scatter', mode = 'lines',
-      x         = ~date, y = ~maxvalues,
-      fill      = 'tozeroy',
-      line      = list(color = colors[i]),
-      fillcolor = colors[i],
-      name      = quants[i],
-      hovertemplate = paste0("<b>", quants[i],"</b><extra></extra>")
-    )
-  }
-  fig %>%
-    add_trace(
-      data      = df,
-      type      = 'scatter', mode = 'lines',
-      x         = ~date, y = ~cases,
-      line      = list(color = "black"),
-      name      = "Cases",
-      hovertemplate = "<b>Cases</b>: %{y:,.0f}<extra></extra>"
-    ) %>%
-    layout(
-      hovermode = "x unified",
-      xaxis = list(title="Date",    showgrid=FALSE, zeroline=FALSE),
-      yaxis = list(title="Dengue cases", showgrid=FALSE, zeroline=FALSE),
-      legend = list(itemclick=FALSE, itemdoubleclick=FALSE)
-    )
-}
+t1uf <- df4UFplot(df.prob.22_23, ano = 2022)
+t2uf <- df4UFplot(df.prob.23_24, ano = 2023)
 
 
 
 # UI ------------------------------------------------------------------------------------------
 
 ui <- fluidPage(
-  titlePanel("Previsão de Dengue"),
+  titlePanel("Dashboard - Freitas et al. 2025"),
+  
   tabsetPanel(
+    
     tabPanel("Brasil",
-             plotlyOutput("plotBR", height = "600px")
+             column(
+               width = 6,
+               plotlyOutput("plotBR1", height = "600px")
+             ),
+             column(
+               width = 6,
+               plotlyOutput("plotBR2", height = "600px")
+             )
     ),
+    
     tabPanel("UF",
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput("uf", "Escolha a UF:", choices = sort(unique(dengue.df$uf)))
+             selectInput(
+               inputId = "uf", 
+               label   = "Escolha a UF:", 
+               choices = sort(unique(dengue.df$uf)), 
+               selected = sort(unique(dengue.df$uf))[1]
+             ),
+             fluidRow(
+               column(width = 6,
+                      plotlyOutput("plotUF1", height = "600px")
                ),
-               mainPanel(
-                 plotlyOutput("plotUF", height = "600px")
+               column(width = 6,
+                      plotlyOutput("plotUF2", height = "600px")
                )
              )
     ),
+    
     tabPanel("Macrorregião",
              sidebarLayout(
                sidebarPanel(
@@ -167,13 +111,24 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   # 1) Brasil
-  output$plotBR <- renderPlotly({
-    plot_grafico_artigo(t1br2, pal2)
+  output$plotBR1 <- renderPlotly({
+    plot_grafico_artigo(t1br, pal2)
   })
   
+  output$plotBR2 <- renderPlotly({
+    plot_grafico_artigo(t2br, pal2)
+  })
+  
+  
   # 2) UF
-  output$plotUF <- renderPlotly({
-    
+  output$plotUF1 <- renderPlotly({
+    uf <- input$uf
+    plot_grafico_artigo_uf(t1uf, uf, pal2)
+  })
+  
+  output$plotUF2 <- renderPlotly({
+    uf <- input$uf
+    plot_grafico_artigo_uf(t2uf, uf, pal2)
   })
   
   # 3) Macrorregião
