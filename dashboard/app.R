@@ -1,5 +1,3 @@
-# app.R
-
 library(shiny)
 library(tidyverse)
 library(plotly)
@@ -23,27 +21,11 @@ pal <- met.brewer('Hiroshige', 5)[1:3]
 pal2 <- c(met.brewer('Hiroshige', 7)[1], pal)
 
 
-# Reading and manipulating data ---------------------------------------------------------------
+# Reading data --------------------------------------------------------------------------------
 
-dengue.df <- vroom::vroom("../data/cases.csv.gz")
-spatial.tbl <- vroom::vroom("../data/spatial.tbl.csv")
-
-dengue.df <- dengue.df |> 
-  left_join(spatial.tbl |> 
-              select(geocode, uf, macroregional, macroregional_geocode), 
-            by = c("municipio_geocodigo"="geocode") )
-
-dados.macro <- dengue.df |> 
-  prepare.data(suspected_cases = F)
-
-observed <- dados.macro |> 
-  rename(season = year) |> 
-  mutate(year.s.first = as.numeric(str_sub(season, 1, 4))) |> 
-  filter(season >= 2022)
-
-df.prob.22_23 <- read_csv(file = "../samples/macro.prob.22_23.csv.gz")
-df.prob.23_24 <- read_csv(file = "../samples/macro.prob.23_24.csv.gz")
-df.prob.24_25 <- read_csv(file = "../samples/macro.prob.24_25.csv.gz")
+df.prob.22_23 <- read_csv(file = "samples/macro.prob.22_23.csv.gz")
+df.prob.23_24 <- read_csv(file = "samples/macro.prob.23_24.csv.gz")
+df.prob.24_25 <- read_csv(file = "samples/macro.prob.24_25.csv.gz")
 
 
 # Datasets for Brazil, UFs and Health Regions -------------------------------------------------
@@ -54,6 +36,8 @@ t2br <- df4BRplot(df.prob.23_24, ano = 2023)
 t1uf <- df4UFplot(df.prob.22_23, ano = 2022)
 t2uf <- df4UFplot(df.prob.23_24, ano = 2023)
 
+t1hd <- df4HDplot(df.prob.22_23, ano = 2022)
+t2hd <- df4HDplot(df.prob.23_24, ano = 2023)
 
 
 # UI ------------------------------------------------------------------------------------------
@@ -77,7 +61,7 @@ ui <- fluidPage(
     tabPanel("UF",
              selectInput(
                inputId = "uf", 
-               label   = "Escolha a UF:", 
+               label = "Escolha a UF:", 
                choices = sort(unique(dengue.df$uf)), 
                selected = sort(unique(dengue.df$uf))[1]
              ),
@@ -92,21 +76,19 @@ ui <- fluidPage(
     ),
     
     tabPanel("Macrorregião",
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput("macro", "Escolha a macrorregião:", choices = sort(unique(dengue.df$macroregional)))
-               ),
-               mainPanel(
-                 plotlyOutput("plotMacro", height = "600px")
-               )
-             )
+             selectInput(
+               inputId = "uf_macro",
+               label   = "Escolha a UF:",
+               choices = sort(unique(dengue.df$uf)),
+               selected = sort(unique(dengue.df$uf))[1]
+             ),
+             plotlyOutput("plotMacro", height = "600px")
     )
   )
 )
 
 
 # SERVER --------------------------------------------------------------------------------------
-
 
 server <- function(input, output, session) {
   
@@ -119,8 +101,7 @@ server <- function(input, output, session) {
     plot_grafico_artigo(t2br, pal2)
   })
   
-  
-  # 2) UF
+    # 2) UF
   output$plotUF1 <- renderPlotly({
     uf <- input$uf
     plot_grafico_artigo_uf(t1uf, uf, pal2)
@@ -133,7 +114,8 @@ server <- function(input, output, session) {
   
   # 3) Macrorregião
   output$plotMacro <- renderPlotly({
-    
+    uf_macro <- input$uf_macro
+    plot_grafico_artigo_macro_por_uf(t1hd, uf_macro, pal2)
   })
   
 }
