@@ -1032,3 +1032,82 @@ gera_plots <- function(obj, local, ano) {
 gera_plots(thd, local = 1701, 2024)
 gera_plots(tuf, local = 'TO', 2024)
 gera_plots(tbr, local = 'BR', 2024)
+
+
+
+# Health districts map ----------------------------------------------------
+
+library(leaflet)
+
+shape <- read_sf('data/shapefile_macro.json') |> 
+  left_join(spatial.tbl |> 
+              select(uf, macroregional, macroregional_geocode) |> 
+              unique() |> 
+              rename(uf_name = uf), by = c('code_macro' = 'macroregional_geocode'))
+
+ufshape <- read_state(
+  year = 2020, 
+  showProgress = FALSE
+)
+ufshape <- ufshape |> 
+  st_crop(xmin = -73.9904, ymin = -33.7511, xmax = -33.2476, ymax = 5.2718) 
+
+ufshape <- st_transform(ufshape, st_crs(shape))
+
+regions_en <- tibble(
+  name_region = c('Norte', 'Nordeste', 'Sudeste', 'Sul', 'Centro Oeste'),
+  region_en = c("North", "Northeast", "Southeast", "South", "Mid-West")
+)
+ufshape <- ufshape |> 
+  left_join(regions_en, by = "name_region") |> 
+  mutate(name_state = if_else(name_state == 'Amazônas', true = 'Amazonas', false = name_state))
+
+shape <- shape |> 
+  left_join(ufshape |> 
+              st_drop_geometry() |> 
+              select(code_state, region_en), by = c('uf' = 'code_state')) 
+
+# Paleta de cores semelhante à do seu mapa
+region_colors <- c(
+  "North" = "#3CAACF",
+  "Northeast" = "#D4EC88",
+  "Mid-West" = "#66C07E",
+  "Southeast" = "#A383D9",
+  "South" = "#DC8E4B"
+)
+
+pal <- colorFactor(palette = region_colors, domain = shape$region_en)
+
+uf_labels <- ufshape %>%
+  mutate(centroid = st_centroid(geom)) %>%
+  st_drop_geometry() %>%
+  bind_cols(st_coordinates(st_centroid(ufshape))) %>%
+  select(name_state, X, Y)  
+
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = shape,
+              color = "white",
+              weight = 1,
+              fillColor = ~pal(region_en),
+              fillOpacity = 0.7,
+              label = ~paste("Health district:", macroregional, "/", uf_name)) %>%
+  addPolygons(data = ufshape,
+              fill = FALSE,
+              color = "black",
+              weight = 2) %>%
+  addLabelOnlyMarkers(data = uf_labels,
+                      lng = ~X,
+                      lat = ~Y,
+                      label = ~name_state,
+                      labelOptions = labelOptions(
+                        noHide = TRUE,
+                        direction = "center",
+                        textOnly = TRUE,
+                        style = list(
+                          "color" = "black",
+                          "font-size" = "12px",
+                          "font-weight" = "bold"
+                        )
+                      ))
+
