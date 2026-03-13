@@ -1,6 +1,29 @@
 # Auxiliar functions 
 # Leo Bastos
 
+
+get_infodengue_cases <- function(geocode = 3304557, 
+                                 disease = "dengue",
+                                 ew_start = 1,
+                                 ew_end = 53,
+                                 ey_start = 2015,
+                                 ey_end = 2026,
+                                 format = "csv"
+){
+  
+  url <- "https://info.dengue.mat.br/api/alertcity?"
+  # geocode <- 3304557 # Rio de Janeiro
+  # geocode <- 3301702 # Duque de Caxias
+  
+  # do not change
+  cons1 <- paste0(url,"geocode=",geocode,"&disease=",disease,"&format=",format,"&ew_start=",ew_start,"&ew_end=",ew_end,"&ey_start=",ey_start,"&ey_end=",ey_end)
+  # cons1
+  
+  dados <- read_csv(cons1, show_col_types=FALSE) %>% arrange(data_iniSE)
+  
+  dados
+}
+
 get_cases <- function(  
     start_date=today()-11*7, 
     end_date = today(), 
