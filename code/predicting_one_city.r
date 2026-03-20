@@ -213,7 +213,7 @@ ggplot(tmp, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
   geom_line(aes(y = casos_est, color = 'black'), linewidth = 0.5, show.legend = T) +
-  geom_point(aes(y = casos)) +
+  geom_point(aes(y = casos), show.legend = F) +
   # geom_line(aes(y = casos_est, color = 'red'), linewidth = 0.5, show.legend = T) +
   # scale_color_manual(values = c('black', 'red'), name = '', labels = c('Observed cases', 'Delay corrected')) + 
   scale_color_manual(values = 'black', name = '', labels = 'Cases (delay corrected)') + 
@@ -222,7 +222,7 @@ ggplot(tmp, aes(x = date, fill = quantile)) +
   scale_y_continuous(labels = scales::comma) +
   theme_bw(base_size = 16) +
   labs(
-    title = '2025-2026',
+    title = paste('2025-2026 --', mun.code),
     x = "",
     y = "Number of cases"
   ) + theme_legend_right +
