@@ -212,9 +212,12 @@ tmp = df4plot(obj = teste$pred, df = df)
 ggplot(tmp, aes(x = date, fill = quantile)) +
   geom_ribbon(aes(ymin = minvalues, ymax = maxvalues), alpha = 0.7) + 
   scale_fill_manual(values = rev(pal2), name = 'Probabilistic epidemic band') +
-  geom_line(aes(y = casos, color = 'black'), linewidth = 0.5, show.legend = T) +
-  geom_line(aes(y = casos_est, color = 'red'), linewidth = 0.5, show.legend = T) +
-  scale_color_manual(values = c('black', 'red'), name = '', labels = c('Observed cases', 'Delay corrected')) + 
+  geom_line(aes(y = casos_est, color = 'black'), linewidth = 0.5, show.legend = T) +
+  geom_point(aes(y = casos)) +
+  # geom_line(aes(y = casos_est, color = 'red'), linewidth = 0.5, show.legend = T) +
+  # scale_color_manual(values = c('black', 'red'), name = '', labels = c('Observed cases', 'Delay corrected')) + 
+  scale_color_manual(values = 'black', name = '', labels = 'Cases (delay corrected)') + 
+  geom_ribbon(aes(y = casos_est, ymin = casos_est_min, ymax = casos_est_max), fill = "gray", alpha = 0.4) + 
   scale_x_date(date_breaks = "1 month", date_labels = "%b", expand = c(0,0)) +
   scale_y_continuous(labels = scales::comma) +
   theme_bw(base_size = 16) +
