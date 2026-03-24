@@ -10,15 +10,15 @@ library(MetBrewer)
 
 
 # 
-source(file = "code/aux_fun.r")
+source(file = "code/aux_fun2.r")
 
 
 # Mosqlimate / Infodengue data (Suspected) --------------------------------
 
 # Epiweek 41/2015 starts on 2015-10-11
 
-mun.code = 3304557 # Rio
-# mun.code = 3550308 # Sao Paulo
+# mun.code = 3304557 # Rio
+ mun.code = 3550308 # Sao Paulo
 # mun.code = 4205407 # Floripa
 # mun.code = 3548906 # Sao Carlos - SP
 mun.code = 5208707 # Goiania

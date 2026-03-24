@@ -186,32 +186,6 @@ week.season  <- function(x, epiweek=NULL, start = 41, week53 = T){
   ifelse(ew >= start, ew - start + 1, 52 - start + 1 + ew)
 }
 
-# Funcao auxiliar para rodar os tres cenarios
-run_inla_forecasting = function(dados, macro, uf){
-  aux = forecasting.inla(dados = dados, MC =T)
-  
-  aux$pred$uf = uf
-  aux$pred$macrocode = macro
-  
-  aux$MC$uf = uf
-  aux$MC$macrocode = macro
-  
-  aux  
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
