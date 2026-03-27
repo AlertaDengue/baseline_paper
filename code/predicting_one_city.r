@@ -22,6 +22,7 @@ source(file = "code/aux_fun2.r")
 # mun.code = 4205407 # Floripa
 # mun.code = 3548906 # Sao Carlos - SP
 mun.code = 5208707 # Goiania
+mun.code = 3300225 # Areal RJ
 
 df = get_infodengue_cases(geocode = mun.code) |> 
   add_column(municipio_geocodigo = mun.code)
