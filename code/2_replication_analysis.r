@@ -536,7 +536,7 @@ ggarrange(ggarrange(NULL, temporalBR, NULL, widths = c(3,10,3), nrow = 1),
           temporalR, nrow = 2)
 
 
-# SM Fig3-30 --------------------------------------------------------------
+# SM Fig3-29 --------------------------------------------------------------
 
 nomesuf <- dados.macro |> 
   ungroup() |> 
@@ -636,7 +636,7 @@ walk2(vufs, 3:29, function(uf, num) {
   
   ggsave(
     filename = sprintf("SM_Fig%02d.png", num),
-    path = '~/ownCloud/Baseline_forecasts/Papers/Epidemic threshold/IDM/v2/SM/',
+    path = yourpath,
     plot = p,
     width = 12, height = 4.5, scale = 1.2,
     dpi = 300, 
@@ -856,6 +856,7 @@ ggarrange(g22, g23, g24,
           ncol = 3,
           widths = c(5,5,7.25),
           align = 'hv')
+
 
 
 # Date of first "warning":
