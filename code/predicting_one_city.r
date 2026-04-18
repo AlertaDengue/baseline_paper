@@ -23,8 +23,12 @@ source(file = "code/aux_fun2.r")
 # mun.code = 3548906 # Sao Carlos - SP
 mun.code = 5208707 # Goiania
 mun.code = 3300225 # Areal RJ
+mun.code = 5003207
 
-df = get_infodengue_cases(geocode = mun.code) |> 
+df = get_infodengue_cases(geocode = mun.code, 
+                          disease = "chikungunya", 
+                          # ey_start = 2020
+                          ) |> 
   add_column(municipio_geocodigo = mun.code)
 
 # # # Slow for the whole country and depends on internet connection
